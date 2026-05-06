@@ -82,7 +82,7 @@ Reduces unnecessary API calls by 40-60%.
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR-USERNAME/agentic-ai-course.git
+git clone https://github.com/neel0071998/agentic-ai-course.git
 cd agentic-ai-course/week1/agent_project
 
 # Set up virtual environment
