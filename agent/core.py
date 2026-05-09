@@ -252,7 +252,7 @@ def synthesize_answer(state: AgentState) -> str:
 REFLECT_EVERY = 3
 
 
-def run_agent(user_goal: str) -> str:
+def run_agent(user_goal: str) -> tuple[str, str, int]:
     """
     Controlled agent loop with state tracking and reflection.
 
@@ -260,6 +260,12 @@ def run_agent(user_goal: str) -> str:
     1. SUCCESS : LLM calls final_answer OR reflection says can_answer_now
     2. FAILED  : API down, repeated parse failures, critical tool error
     3. TIMEOUT : Max steps reached
+    
+    Returns:
+        tuple: (final_answer, status, steps_used)
+            final_answer: string answer for the user
+            status: "SUCCESS" | "FAILED" | "TIMEOUT"
+            steps_used: number of steps taken
     """
     # ── Initialize State ──────────────────────────────
     state = AgentState(goal=user_goal)
@@ -286,7 +292,7 @@ def run_agent(user_goal: str) -> str:
                 answer = synthesize_answer(state)
                 state.status       = TaskStatus.SUCCESS
                 state.final_answer = answer
-                return answer
+                return answer, "SUCCESS", state.step
 
             if not reflection.get("making_progress"):
                 logger.warning("Reflection: not making progress → nudging agent")
@@ -308,7 +314,7 @@ def run_agent(user_goal: str) -> str:
             state.status        = TaskStatus.FAILED
             state.error_message = "LLM API unavailable after all retries"
             logger.error(state.error_message)
-            return "Agent error: could not reach LLM. Please try again."
+            return "Agent error: could not reach LLM. Please try again.", "FAILED", state.step
 
         # ── PARSE OUTPUT ──────────────────────────────
         decision = parse_llm_output(llm_output)
@@ -322,7 +328,7 @@ def run_agent(user_goal: str) -> str:
                 state.status        = TaskStatus.FAILED
                 state.error_message = "LLM not following output format"
                 logger.error(state.error_message)
-                return "Agent error: LLM not following output format."
+                return "Agent error: LLM not following output format.", "FAILED", state.step
 
             messages.append({"role": "assistant", "content": llm_output})
             messages.append({
@@ -343,7 +349,7 @@ def run_agent(user_goal: str) -> str:
             state.status       = TaskStatus.SUCCESS
             state.final_answer = tool_input
             logger.info(f"SUCCESS in {state.step} steps: {tool_input}")
-            return tool_input
+            return tool_input, "SUCCESS", state.step
 
         # ── REASONING LOOP DETECTION ──────────────────
         action_key = f"{tool_name}:{tool_input}"
@@ -400,6 +406,7 @@ def run_agent(user_goal: str) -> str:
 
     if state.collected_data:
         logger.info("Attempting synthesis from partial data")
-        return synthesize_answer(state)
+        final = synthesize_answer(state)
+        return final, "TIMEOUT", state.step
 
-    return "Agent timed out without collecting enough information."
+    return "Agent timed out without collecting enough information.", "TIMEOUT", state.step

@@ -39,4 +39,4 @@ if not GROQ_API_KEY:
     raise EnvironmentError(
         f"\nGROQ_API_KEY not found in .env file at: {dotenv_path}\n"
         f"Get your free key from: https://console.groq.com\n"
-    )
+    ) 
