@@ -30,19 +30,10 @@ def setup_logging():
     root_logger.addHandler(file_handler)
 
 
-def main():
-    """Main entry point."""
-    setup_logging()
-    logger = logging.getLogger(__name__)
-    
-    from agent.core import run_agent
+def test_real_api_tools():
+    """Test real API tools before running agent."""
     from agent.tools import run_tool
     
-    logger.info("=" * 50)
-    logger.info("Agent session started")
-    logger.info("=" * 50)
-    
-    # Test real API tools
     print("\n🧪 Testing Real API Tools")
     print("─" * 40)
     
@@ -57,8 +48,35 @@ def main():
     print(f"✅ Weather: {result}\n")
     
     print("✅ All real API tools working\n")
+
+
+def safe_run_agent(goal: str):
+    """
+    Wrapper for run_agent that ensures consistent return format.
+    Handles both old (string return) and new (tuple return) formats.
+    """
+    from agent.core import run_agent
     
-    # Agent goals with real APIs
+    result = run_agent(goal)
+    
+    # Check what we got back
+    if isinstance(result, tuple) and len(result) == 3:
+        # New format: (answer, status, steps)
+        return result
+    elif isinstance(result, str):
+        # Old format: just answer string
+        return result, "SUCCESS", 1
+    else:
+        # Unknown format
+        return str(result), "UNKNOWN", 1
+
+
+def run_single_agent_demo():
+    """Run single-agent examples from previous lessons."""
+    print("\n" + "=" * 60)
+    print("SINGLE-AGENT DEMO (Lessons 5-7)")
+    print("=" * 60)
+    
     goals = [
         "What is 5000 INR in USD?",
         "What's the weather like in Delhi?",
@@ -68,8 +86,61 @@ def main():
     for goal in goals:
         print(f"\n{'─'*50}")
         print(f"🎯 Goal: {goal}")
-        result = run_agent(goal)
-        print(f"✅ Answer: {result}")
+        
+        # Use safe wrapper
+        answer, status, steps = safe_run_agent(goal)
+        
+        print(f"✅ Answer: {answer}")
+        print(f"   Status: {status}, Steps: {steps}")
+
+
+def run_multi_agent_demo():
+    """Demo of multi-agent system for India-relevant buying decision."""
+    import os
+    from groq import Groq
+    from multi_agent.orchestrator import run_multi_agent
+    
+    print("\n" + "=" * 60)
+    print("MULTI-AGENT DEMO (Lesson 8)")
+    print("=" * 60)
+
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    # Goal that naturally decomposes into multiple tasks
+    goal = (
+        "Help me decide on a laptop under ₹60,000. "
+        "Search for available options, convert 800 USD to INR "
+        "so I understand if US prices are better, "
+        "and check the weather in Delhi because I want to know "
+        "if I should visit Nehru Place market today."
+    )
+
+    final_answer = run_multi_agent(goal=goal, client=client)
+
+    print("\n" + "─" * 60)
+    print("FINAL SYNTHESIZED ANSWER:")
+    print("─" * 60)
+    print(final_answer)
+    print("─" * 60)
+
+
+def main():
+    """Main entry point."""
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 50)
+    logger.info("Agent session started")
+    logger.info("=" * 50)
+    
+    # Test tools first
+    test_real_api_tools()
+    
+    # Run single-agent demo
+    run_single_agent_demo()
+    
+    # Run multi-agent demo
+    run_multi_agent_demo()
     
     logger.info("Agent session ended")
 
